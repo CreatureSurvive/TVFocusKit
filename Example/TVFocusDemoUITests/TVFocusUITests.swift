@@ -125,6 +125,7 @@ final class TVFocusUITests: XCTestCase {
         expectation(for: blocked, evaluatedWith: log)
         waitForExpectations(timeout: 3)
         XCTAssertTrue(log.label.contains("left"), log.label)
+        XCTAssertTrue(log.label.contains("r0i0"), "SwiftUI items are named by their accessibility label: \(log.label)")
         press(.right)
         let moved = NSPredicate(format: "label CONTAINS '→'")
         expectation(for: moved, evaluatedWith: log)

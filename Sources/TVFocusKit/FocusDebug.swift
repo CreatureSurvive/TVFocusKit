@@ -74,12 +74,15 @@ public final class FocusMonitor {
             center.addObserver(forName: UIFocusSystem.didUpdateNotification, object: nil, queue: .main) { [weak self] note in
                 // Delivered on the main queue; the notification never leaves it.
                 nonisolated(unsafe) let note = note
-                MainActor.assumeIsolated { self?.record(FocusSnapshot(note, failed: false)) }
+                MainActor.assumeIsolated { () -> Void in
+                    guard let self, let id = self.record(FocusSnapshot(note, failed: false)) else { return }
+                    self.nameLater(eventID: id, note)
+                }
             },
             center.addObserver(forName: UIFocusSystem.movementDidFailNotification, object: nil, queue: .main) { [weak self] note in
                 // Delivered on the main queue; the notification never leaves it.
                 nonisolated(unsafe) let note = note
-                MainActor.assumeIsolated { self?.record(FocusSnapshot(note, failed: true)) }
+                MainActor.assumeIsolated { _ = self?.record(FocusSnapshot(note, failed: true)) }
             },
         ]
         #endif
@@ -98,7 +101,10 @@ public final class FocusMonitor {
         events = []
     }
 
-    func record(_ snapshot: FocusSnapshot) {
+    @discardableResult
+    func record(_ snapshot: FocusSnapshot) -> Int? {
+        // Updates with no item on either side carry no information.
+        if !snapshot.failed, snapshot.from == nil, snapshot.to == nil { return nil }
         nextID += 1
         let event = FocusEvent(
             id: nextID,
@@ -121,6 +127,15 @@ public final class FocusMonitor {
                 Self.logger.debug("Focus: \(event.summary, privacy: .public)")
             }
         }
+        return event.id
+    }
+
+    /// Replaces the description of an event's newly focused item.
+    func rename(eventID: Int, to name: String) {
+        guard let index = events.firstIndex(where: { $0.id == eventID }) else { return }
+        let old = events[index]
+        events[index] = FocusEvent(id: old.id, date: old.date, kind: old.kind, heading: old.heading, from: old.from, to: name)
+        if focusedDescription == old.to { focusedDescription = name }
     }
 }
 
@@ -142,6 +157,27 @@ struct FocusSnapshot: Sendable {
 }
 
 #if canImport(UIKit) && !os(watchOS)
+extension FocusMonitor {
+    /// SwiftUI builds its accessibility elements after focus first lands, so
+    /// an item focused at launch may not have a name yet. Try again shortly.
+    func nameLater(eventID: Int, _ notification: Notification) {
+        guard let context = notification.userInfo?[UIFocusSystem.focusUpdateContextUserInfoKey] as? UIFocusUpdateContext,
+              let item = context.nextFocusedItem, FocusSnapshot.resolvedName(of: item) == nil
+        else { return }
+        let object = item as AnyObject
+        Task { @MainActor [weak self, weak object] in
+            for _ in 0..<5 {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard let item = object as? any UIFocusItem else { return }
+                if let name = FocusSnapshot.resolvedName(of: item) {
+                    self?.rename(eventID: eventID, to: name)
+                    return
+                }
+            }
+        }
+    }
+}
+
 @MainActor
 extension FocusSnapshot {
     init(_ notification: Notification, failed: Bool) {
@@ -170,11 +206,56 @@ extension FocusSnapshot {
     }
 
     /// Accessibility label, then identifier, then the type name.
+    ///
+    /// SwiftUI's focus items aren't accessibility elements themselves, so
+    /// for those the accessibility element with the same frame is used.
     static func describe(_ item: any UIFocusItem) -> String {
-        let object = item as? NSObject
-        if let label = object?.accessibilityLabel, !label.isEmpty { return label }
-        if let identifier = (item as? any UIAccessibilityIdentification)?.accessibilityIdentifier, !identifier.isEmpty { return identifier }
-        return String(describing: type(of: item))
+        resolvedName(of: item) ?? String(describing: type(of: item))
+    }
+
+    /// The item's accessibility name, or `nil` if it has none (yet).
+    static func resolvedName(of item: any UIFocusItem) -> String? {
+        if let name = name(of: item as? NSObject) { return name }
+        guard let frame = windowFrame(of: item), let root = hostingView(of: item) else { return nil }
+        return accessibilityName(matching: frame, in: root)
+    }
+
+    static func name(of object: NSObject?) -> String? {
+        guard let object else { return nil }
+        if let label = object.accessibilityLabel, !label.isEmpty {
+            return label.count > 48 ? label.prefix(47) + "…" : label
+        }
+        if let identifier = (object as? any UIAccessibilityIdentification)?.accessibilityIdentifier, !identifier.isEmpty { return identifier }
+        return nil
+    }
+
+    static func hostingView(of item: any UIFocusItem) -> UIView? {
+        if let view = item as? UIView { return view }
+        return sequence(first: item.parentFocusEnvironment, next: { $0?.parentFocusEnvironment })
+            .lazy.compactMap { $0 as? UIView }.first
+    }
+
+    /// The name of the accessibility element under `root` whose frame best
+    /// overlaps `frame` (window coordinates).
+    static func accessibilityName(matching frame: CGRect, in root: UIView) -> String? {
+        guard let window = root.window, frame.width > 0, frame.height > 0 else { return nil }
+        let target = window.convert(frame, to: window.screen.coordinateSpace)
+        var best: (overlap: CGFloat, name: String)?
+        var pending: [NSObject] = [root]
+        var visited = 0
+        while let node = pending.popLast(), visited < 5_000 {
+            visited += 1
+            if let view = node as? UIView { pending.append(contentsOf: view.subviews) }
+            if let elements = node.accessibilityElements as? [NSObject] { pending.append(contentsOf: elements) }
+            guard node !== root, let name = name(of: node) else { continue }
+            let elementFrame = node.accessibilityFrame
+            let intersection = elementFrame.intersection(target)
+            guard !intersection.isNull else { continue }
+            let union = elementFrame.union(target)
+            let overlap = (intersection.width * intersection.height) / (union.width * union.height)
+            if overlap > 0.5, overlap > (best?.overlap ?? 0) { best = (overlap, name) }
+        }
+        return best?.name
     }
 
     static func windowFrame(of item: any UIFocusItem) -> CGRect? {

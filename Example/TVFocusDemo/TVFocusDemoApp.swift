@@ -5,7 +5,9 @@ import TVFocusKit
 struct TVFocusDemoApp: App {
     var body: some Scene {
         WindowGroup {
-            if ProcessInfo.processInfo.arguments.contains("-plain") {
+            if ProcessInfo.processInfo.arguments.contains("-showcase") {
+                ShowcaseView()
+            } else if ProcessInfo.processInfo.arguments.contains("-plain") {
                 PlainRows()
             } else {
                 ShelfDemo()

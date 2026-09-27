@@ -21,6 +21,11 @@ ShelfStack(sections) { section in
 }
 ```
 
+<p align="center">
+  <img src="Screenshots/shelves.jpg" alt="Media shelves on Apple TV built with FocusShelf and ShelfStack, with the focused card lifted" width="100%">
+</p>
+
+
 ## The problems
 
 | Problem in plain SwiftUI | TVFocusKit |
@@ -53,6 +58,8 @@ xcodebuild test -project TVFocusDemo.xcodeproj -scheme TVFocusDemo \
 
 `swift test` covers the pure logic: focus memory, the focus request retry loop, the Menu state
 machine, and the monitor's event window.
+
+The README screenshots are captured by UI tests in `Example/`; `Scripts/screenshots.sh` regenerates them.
 
 ## API
 
@@ -118,6 +125,10 @@ ContentView()
 
 FocusMonitor.shared.logsEvents = true   // also log to Console (subsystem TVFocusKit)
 ```
+
+<p align="center">
+  <img src="Screenshots/debug-overlay.jpg" alt="The focus debug overlay outlining the focused card and listing focus moves, including a blocked move to the left" width="100%">
+</p>
 
 ## Installation
 
