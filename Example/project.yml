@@ -1,0 +1,46 @@
+name: TVFocusDemo
+options:
+  bundleIdPrefix: com.creaturesurvive
+packages:
+  TVFocusKit:
+    path: ..
+targets:
+  TVFocusDemo:
+    type: application
+    platform: tvOS
+    deploymentTarget: "17.0"
+    sources: [TVFocusDemo]
+    dependencies:
+      - package: TVFocusKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.creaturesurvive.TVFocusDemo
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: RUMWXF5QY3
+  TVFocusDemoUITests:
+    type: bundle.ui-testing
+    platform: tvOS
+    deploymentTarget: "17.0"
+    sources: [TVFocusDemoUITests]
+    dependencies:
+      - target: TVFocusDemo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.creaturesurvive.TVFocusDemoUITests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        TEST_TARGET_NAME: TVFocusDemo
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: RUMWXF5QY3
+schemes:
+  TVFocusDemo:
+    build:
+      targets:
+        TVFocusDemo: all
+        TVFocusDemoUITests: [test]
+    test:
+      targets: [TVFocusDemoUITests]
