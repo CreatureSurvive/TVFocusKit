@@ -1,5 +1,11 @@
 # TVFocusKit
 
+[![CI](https://github.com/CreatureSurvive/TVFocusKit/actions/workflows/ci.yml/badge.svg)](https://github.com/CreatureSurvive/TVFocusKit/actions/workflows/ci.yml)
+[![Swift 6.0+](https://img.shields.io/badge/Swift-6.0+-F05138?logo=swift&logoColor=white)](https://swift.org)
+[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20visionOS-blue)](#requirements)
+[![Swift Package Manager](https://img.shields.io/badge/SwiftPM-compatible-brightgreen)](#installation)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
 Focus tools for tvOS SwiftUI that fix what the focus engine gets wrong in real apps: rows that
 forget where you were, focus requests that silently do nothing, Menu buttons that jump straight
 out of the screen, clipped focus effects, and focus bugs you can't see.
@@ -115,12 +121,33 @@ FocusMonitor.shared.logsEvents = true   // also log to Console (subsystem TVFocu
 
 ## Installation
 
+Add TVFocusKit to your `Package.swift`:
+
 ```swift
-.package(url: "https://github.com/CreatureSurvive/TVFocusKit.git", from: "1.0.0")
+dependencies: [
+    .package(url: "https://github.com/CreatureSurvive/TVFocusKit.git", from: "1.0.0"),
+],
+targets: [
+    .target(name: "MyApp", dependencies: ["TVFocusKit"]),
+]
 ```
 
-Requires Swift 6 and tvOS 17. It also builds for iOS 17, macOS 14 and visionOS 1, so shared
-code compiles. Focus sections and the Menu behavior apply only on tvOS and macOS.
+Or in Xcode, choose **File › Add Package Dependencies…** and enter
+`https://github.com/CreatureSurvive/TVFocusKit`.
+
+### Requirements
+
+| Platform | Minimum |
+| --- | --- |
+| iOS | 17.0 |
+| macOS | 14.0 |
+| tvOS | 17.0 |
+| visionOS | 1.0 |
+
+Swift 6.0 (Xcode 16) or later, in Swift 6 language mode. No third-party dependencies.
+
+TVFocusKit is built for tvOS. It also compiles on the other platforms so shared code builds, but
+focus sections and the Menu behavior only take effect on tvOS and macOS.
 
 ## Notes
 
@@ -129,6 +156,15 @@ code compiles. Focus sections and the Menu behavior apply only on tvOS and macOS
 - A shelf's first item marks the start. A header view above the shelves (a hero banner, for
   example) isn't part of it.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Releases follow [Semantic Versioning](https://semver.org).
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `swift test` before opening a pull request, and
+add tests for new behavior.
+
 ## License
 
-MIT
+Available under the MIT license. See [LICENSE](LICENSE) for details.
